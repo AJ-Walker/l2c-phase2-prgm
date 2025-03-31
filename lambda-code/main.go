@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -17,6 +17,12 @@ type Response struct {
 	Message    string `json:"message"`
 	StatusCode int    `json:"statusCode"`
 }
+
+const (
+	AWS_REGION string = "ap-south-1"
+	TABLE_NAME string = "Movies"
+	MODEL_ID   string = "anthropic.claude-3-sonnet-20240229-v1:0"
+)
 
 func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.Print("Inside lambdaHandler func")
@@ -44,9 +50,14 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 		if !ok {
 			return response(http.StatusNotFound, false, "movieId query param missing", nil), nil
 		}
-		return getMoviesSummary(movieId)
+		return getMovieSummary(movieId)
 	}
 	return response(http.StatusInternalServerError, false, "Wrong path provided", nil), nil
+}
+
+func init() {
+	Init_DB()
+	Init_Bedrock()
 }
 
 func main() {
@@ -57,7 +68,17 @@ func main() {
 func getMovies() (events.APIGatewayProxyResponse, error) {
 	log.Print("Inside getMovies func")
 
-	return response(http.StatusOK, true, "getMovies works", nil), nil
+	result, err := GetAllMovies_DB()
+	if err != nil {
+		log.Print(err)
+		return response(http.StatusBadRequest, false, err.Error(), nil), nil
+	}
+
+	if len(result) == 0 {
+		return response(http.StatusOK, false, "No movies found", nil), nil
+	}
+
+	return response(http.StatusOK, true, "Movies fetched successfully.", result), nil
 }
 
 func getMoviesByYear(year string) (events.APIGatewayProxyResponse, error) {
@@ -66,16 +87,42 @@ func getMoviesByYear(year string) (events.APIGatewayProxyResponse, error) {
 		return response(http.StatusBadRequest, false, "year field missing", nil), nil
 	}
 
-	return response(http.StatusOK, true, fmt.Sprintf("Year: %v", year), nil), nil
+	yearInt, err := strconv.Atoi(year)
+	if err != nil {
+		log.Print(err)
+		return response(http.StatusBadRequest, false, err.Error(), nil), nil
+	}
+
+	result, err := GetMoviesByYear_DB(int16(yearInt))
+	if err != nil {
+		log.Print(err)
+		return response(http.StatusBadRequest, false, err.Error(), nil), nil
+	}
+
+	if len(result) == 0 {
+		return response(http.StatusOK, false, "No movies found", nil), nil
+	}
+
+	return response(http.StatusOK, true, "Movies fetched successfully.", result), nil
 }
 
-func getMoviesSummary(movieId string) (events.APIGatewayProxyResponse, error) {
+func getMovieSummary(movieId string) (events.APIGatewayProxyResponse, error) {
 	log.Print("Inside getMoviesSummary func")
 
 	if movieId == "" {
 		return response(http.StatusBadRequest, false, "movieId cannot be empty", nil), nil
 	}
-	return response(http.StatusOK, true, fmt.Sprintf("movieId: %v", movieId), nil), nil
+
+	result, err := GetMovieSummary_DB(movieId)
+	if err != nil {
+		log.Print(err)
+		return response(http.StatusBadRequest, false, err.Error(), nil), nil
+	}
+
+	data := map[string]string{
+		"summary": result,
+	}
+	return response(http.StatusOK, true, "Movie summary fetched.", data), nil
 }
 
 func response(statusCode int, status bool, message string, data any) events.APIGatewayProxyResponse {
