@@ -75,30 +75,6 @@ terraform apply
 - `terraform init`: Initializes the Terraform working directory.
 - `terraform apply`: Provisions the AWS resources (review changes before confirming).
 
-5. Install API dependencies:
-
-```bash
-cd ../movies-api
-go mod download
-```
-
-6. Load Movie Data into DynamoDB:
-   In `movies-api/main.go`, ensure the following code is uncommented:
-
-```go
-if err := PutItems_DynamoDB(movies); err != nil {
-	fmt.Println(err)
-}
-```
-
-7. Run the Data Insertion.
-
-```bash
-go run .
-```
-
-This executes `main.go` in `movies-api/` and populates the DynamoDB table with data from `movies.json`.
-
 ### Lambda Function Deployment
 
 The Lambda function is deployed automatically via Terraform. To update and redeploy the Lambda code:
