@@ -3,7 +3,8 @@ provider "aws" {
 }
 
 locals {
-  files = fileset("${path.module}/${var.local_images_folder}", "*")
+  files      = fileset("${path.module}/${var.local_images_folder}", "*")
+  movie_data = jsondecode(file("${path.module}/movies.json"))
 }
 
 # S3
@@ -40,8 +41,6 @@ resource "aws_s3_bucket_policy" "allow_get_images_policy" {
   policy = data.aws_iam_policy_document.allow_get_s3_images_policy.json
 }
 
-# Lambda
-
 # DynamoDB
 resource "aws_dynamodb_table" "movies_db" {
   name         = "Movies"
@@ -64,22 +63,24 @@ resource "aws_dynamodb_table" "movies_db" {
   }
 }
 
-# resource "aws_dynamodb_table_item" "movie_item" {
-#   table_name = aws_dynamodb_table.movies-db.name
-#   hash_key   = aws_dynamodb_table.movies-db.hash_key
-#   range_key  = aws_dynamodb_table.movies-db.range_key
+resource "aws_dynamodb_table_item" "movie_item" {
+  table_name = aws_dynamodb_table.movies_db.name
+  hash_key   = aws_dynamodb_table.movies_db.hash_key
+  range_key  = aws_dynamodb_table.movies_db.range_key
 
-#   item = <<ITEM
-#   {
-#   "movieId": {"S": "123"},
-#   "title": {"S": "Pulp Fiction"},
-#   "releaseYear": {"N": "1994"},
-#   "genre": {"S": "Crime, Drama"},
-#   "coverUrl": {"S": "image.png"},
-#   "generatedSummary": {"S": ""}
-#   }
-#   ITEM
-# }
+  count = length(local.movie_data)
+
+  item = <<ITEM
+  {
+  "movieId": {"S": "${local.movie_data[count.index].movieId}"},
+  "title": {"S": "${local.movie_data[count.index].title}"},
+  "releaseYear": {"N": "${local.movie_data[count.index].releaseYear}"},
+  "genre": {"S": "${local.movie_data[count.index].genre}"},
+  "coverUrl": {"S": "${local.movie_data[count.index].coverUrl}"},
+  "generatedSummary": {"S": ""}
+  }
+  ITEM
+}
 
 # Lambda
 resource "aws_lambda_function" "movies_api_lambda" {
