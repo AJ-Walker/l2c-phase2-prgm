@@ -112,7 +112,7 @@ terraform apply
 
 ### API Gateway
 
-After Terraform applies successfully, an API Gateway URL is output (example only):
+After Terraform applies successfully, an API Gateway URL is outputed (example only):
 
 ```
 https://ty1fryoc2g.execute-api.ap-south-1.amazonaws.com/dev
@@ -158,7 +158,6 @@ terraform plan
 This helps avoid unintended infrastructure modifications.
 
 ## Future Changes
-
 1. ...
 
 ## Troubleshooting
