@@ -159,7 +159,7 @@ This helps avoid unintended infrastructure modifications.
 
 ## Future Changes
 
-1. Load the movie data from the terraform instead of running a dynamodb script.
+1. ...
 
 ## Troubleshooting
 
